@@ -1,3 +1,4 @@
+
 package de.tum.cit.ase.maze;
 
 import com.badlogic.gdx.Gdx;
@@ -42,9 +43,21 @@ public class GameMap2 {
     private List<Tuple> trapSpawns = new ArrayList<>();
     private List<Tuple> enemySpawns = new ArrayList<>();
 
+    private List<Tuple> keyChestSpawns = new ArrayList<>();
+    private List<Tuple> doorSpawns = new ArrayList<>();
+
     private Map<Integer, TiledMapTile> mapTextures = new HashMap<>();
 
     private Map<Tuple, Integer> gameMapMap;
+
+    /**
+     * Constructs a new GameMap2 object, loading map textures and setting up the game map based on a provided file path.
+     * This constructor initializes textures for basic tiles, objects, mobs, and things, and then parses a properties file
+     * to create the game map. It sets up various tiles like walls, entry points, exits, traps, enemies, and keys, and
+     * configures their appearance based on the surrounding tile context to enhance the visual presentation.
+     *
+     * @param filePath The path to the properties file that defines the layout and elements of the game map.
+     */
 
     public GameMap2(String filePath) {
         this.tiledMap = new TiledMap();
@@ -88,6 +101,10 @@ public class GameMap2 {
         mapHeight = 0;
 
         for (Tuple coordinates : gameMapMap.keySet()) {
+            if (coordinates == null) {
+                Gdx.app.error("MapError", "Null coordinates found in gameMapMap");
+                continue;
+            }
             // Calculate map dimensions based on the largest x and y coordinates
             if(coordinates.getX() > mapWidth){
                 mapWidth = coordinates.getX();
@@ -103,6 +120,12 @@ public class GameMap2 {
             }
             if(gameMapMap.get(coordinates) == 4){
                 enemySpawns.add(coordinates);
+            }
+            if(gameMapMap.get(coordinates) == 5){
+                keyChestSpawns.add(coordinates);
+            }
+            if(gameMapMap.get(coordinates) == 2){
+                doorSpawns.add(coordinates);
             }
         }
 
@@ -188,9 +211,14 @@ public class GameMap2 {
                 wall_connections += westWall ? 1 : 0;
 
 
-                if (!gameMapMap.containsKey(currentCoordinateTuple) || gameMapMap.get(currentCoordinateTuple) == 3 || gameMapMap.get(currentCoordinateTuple) == 4) {
+                if (!gameMapMap.containsKey(currentCoordinateTuple)
+                        || gameMapMap.get(currentCoordinateTuple) == 3
+                        || gameMapMap.get(currentCoordinateTuple) == 4
+                        || gameMapMap.get(currentCoordinateTuple) == 5) {
                     cell.setTile(basicTilesSet.getTile(13)); // Floor
-                } else {
+                } else if (gameMapMap.get(currentCoordinateTuple) == 2) {
+                    cell.setTile(basicTilesSet.getTile(96)); // pathway
+                }else {
                     cell.setTile(mapTextures.get(gameMapMap.get(currentCoordinateTuple))); // Set the specified tile image
 
                     // by default all walls are set to be horizontal wall segments
@@ -271,9 +299,30 @@ public class GameMap2 {
         return enemySpawns;
     }
 
+    public List<Tuple> getKeyChestSpawns() {
+        return keyChestSpawns;
+    }
+
+    public List<Tuple> getDoorSpawns() {
+        return doorSpawns;
+    }
+
     public TiledMapTileLayer getTileLayer() {
         return tileLayer;
     }
+
+    public TiledMapTileSet getBasicTilesSet() {
+        return basicTilesSet;
+    }
+
+    /**
+     * Loads and applies map tiles from a properties file to a specified tile layer within the game's tiled map.
+     * This method reads a properties file where each entry represents a tile's position (key) and its tile code (value),
+     * then renders each tile based on its code. This allows for dynamic map generation based on simple configuration files.
+     *
+     * @param game The instance of the MazeRunnerGame, used to access game-wide properties and methods.
+     * @param propertiesFilePath The path to the properties file that contains the map tile data.
+     */
 
     public void loadMapFromProperties(MazeRunnerGame game, String propertiesFilePath) {
         TiledMapTileLayer layer = (TiledMapTileLayer) tiledMap.getLayers().get("your_layer_name");
@@ -298,11 +347,22 @@ public class GameMap2 {
         }
     }
 
+
+
     public void render(Batch batch) {
         // Render any additional map-related logic
         // (e.g., handling objects, entities, etc.)
     }
 
+
+    /**
+     * Retrieves a TextureRegion corresponding to a specific tile code. This utility method is used internally
+     * to map numeric tile codes to actual TextureRegion instances for rendering. It allows for a flexible mapping
+     * of tile codes to textures, which can be expanded based on the game's needs.
+     *
+     * @param tileCode The integer code representing a specific type of tile.
+     * @return A TextureRegion that corresponds to the provided tile code, or null if the code does not match any tile.
+     */
     private TextureRegion getTileRegion(int tileCode) {
         // Assuming there are 6 tiles in the first row (tile codes 0 to 5)
         if (tileCode >= 0 && tileCode < 6) {
@@ -315,58 +375,3 @@ public class GameMap2 {
 }
 
 
-
-/*
-public class GameMap {
-
-
-    private TiledMap tiledMap;
-    private TextureRegion[][] tiles;  // Assuming you'll load the tileset as a TextureRegion
-
-    public GameMap(TiledMap tiledMap, TextureAtlas textureAtlas) {
-        this.tiledMap = tiledMap;
-        this.tiles = TextureRegion.split(textureAtlas.findRegion("basictiles"), 16, 16);  // Assuming you're using TextureAtlas
-    }
-
-    public void interpretMap() {
-        Texture basicTileSheet = new Texture(Gdx.files.internal("basictiles.png"));
-
-        TiledMapTileLayer layer = (TiledMapTileLayer) tiledMap.getLayers().get("your_layer_name");
-
-        for (int y = 0; y < layer.getHeight(); y++) {
-            for (int x = 0; x < layer.getWidth(); x++) {
-                TiledMapTileLayer.Cell cell = layer.getCell(x, y);
-
-                if (cell != null) {
-                    int tileCode = Integer.parseInt(cell.getTile().getProperties().get("type", String.class));
-                    TextureRegion tileRegion = getTileRegion(tileCode);
-
-                    // Now you can use tileRegion for rendering or other purposes
-                    // Example: batch.draw(tileRegion, x * 16, y * 16);
-                }
-            }
-        }
-    }
-
-    private TextureRegion getTileRegion(int tileCode) {
-        switch (tileCode) {
-            case 0:
-                return tiles[1][6];  // col 6, row 1
-            case 1:
-                return tiles[7][1];  // col 1, row 7
-            case 2:
-                return tiles[6][2];  // col 2, row 6
-            case 3:
-                return tiles[3][7];  // col 7, row 3
-            case 4:
-                return tiles[8][4];  // col 4, row 8
-            case 5:
-                return tiles[9][6];  // col 6, row 9
-            default:
-                return null;  // Handle other cases as needed
-        }
-    }
-
-
-
-}*/
