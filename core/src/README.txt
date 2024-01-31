@@ -24,7 +24,7 @@ Btw, we intentionally left the visible red hitboxes inside the game, these are f
 
 When we stitched the levels together for the first time, it was really fun to play the game.
 
-ONE IMPORTANT TIP FOR PLAYING, to
+ONE IMPORTANT TIP FOR PLAYING, to reach the necht level the player has to touch the bottom of the door Sprite. There is a small collision rectangle.
 
 
 ######################################
