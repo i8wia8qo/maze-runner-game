@@ -372,6 +372,14 @@ public class GameMap2 {
             return null;
         }
     }
+
+    public void setMapWidth(int mapWidth) {
+        this.mapWidth = mapWidth;
+    }
+
+    public void setMapHeight(int mapHeight) {
+        this.mapHeight = mapHeight;
+    }
 }
 
 
