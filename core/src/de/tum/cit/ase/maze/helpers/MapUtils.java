@@ -75,15 +75,20 @@ public class MapUtils {
     private static void processTileProperties(MapProperties properties) {
         // Access and process the properties of the tile
         // Example: Check if a property named "blocked" exists and its value
+
+        /*
+
         if (properties.containsKey("blocked")) {
-//            boolean isBlocked = true;
-//            System.out.println("Tile is blocked: " + isBlocked);
+        // boolean isBlocked = true;
+        // System.out.println("Tile is blocked: " + isBlocked);
             System.out.print("x");
         } else {
-//            boolean isBlocked = false;
-//            System.out.println("Tile is blocked: " + isBlocked);
+        // boolean isBlocked = false;
+        // System.out.println("Tile is blocked: " + isBlocked);
             System.out.print(" ");
         }
+
+        */
 
         // You can check other properties as needed
         // ...

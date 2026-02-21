@@ -19,6 +19,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 import games.spooky.gdx.nativefilechooser.NativeFileChooserCallback;
 import games.spooky.gdx.nativefilechooser.NativeFileChooserConfiguration;
+import com.badlogic.gdx.utils.Align;
 
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.FileFilter;
@@ -52,7 +53,98 @@ public class MenuScreen implements Screen {
         //ExtendViewport viewport = new ExtendViewport(MazeRunnerGame.V_WIDTH, MazeRunnerGame.V_HEIGHT, camera);
         //stage = new Stage(viewport, game.getSpriteBatch());
 
-        Table table = new Table(); // Create a table for layout
+
+        Table table = new Table();
+        table.setFillParent(true);
+        table.defaults().pad(6);
+        stage.addActor(table);
+
+        // Title: Maze Runner!
+        Label title = new Label("Maze Runner!", game.getSkin(), "title");
+        title.setAlignment(Align.center);
+        table.add(title).padBottom(10).row();
+
+        // Game description: How to play the game and achieve victory!
+        String descriptionText =
+                "A spooky pixel-art maze adventure!\n\n" +
+                        "Find the key, dodge ghostly enemies, and unlock the door to escape.\n\n" +
+                        "Survive through five haunted levels… or load your own custom map.";
+
+        Label description = new Label(descriptionText, game.getSkin());
+        description.setAlignment(Align.center);
+        description.setWrap(true);
+
+        table.add(description).width(650).padBottom(24).row();
+
+        // Subtitle
+        Label subtitle = new Label("— Menu —", game.getSkin(), "title");
+        subtitle.setAlignment(Align.center);
+
+        table.add(subtitle).padBottom(18).row();
+
+
+
+        // Buttons: Start the game in campaign mode, or load a custom map!
+
+        TextButton goToGameButton = new TextButton("Start the Game", game.getSkin());
+        table.add(goToGameButton).width(330).padBottom(12).row();
+
+        goToGameButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.goToGame();
+            }
+        });
+
+        TextButton loadGameMapButton = new TextButton("Load Custom Map", game.getSkin());
+        table.add(loadGameMapButton).width(330).padBottom(28).row();
+
+        loadGameMapButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                NativeFileChooserConfiguration conf = new NativeFileChooserConfiguration();
+                conf.mimeFilter = "text/plain";
+                conf.directory = Gdx.files.absolute(System.getProperty("user.home"));
+
+                game.getFileChooser().chooseFile(conf, new NativeFileChooserCallback() {
+                    @Override
+                    public void onFileChosen(FileHandle file) {
+                        String filePath = file.path();
+                        Gdx.app.log("File Chooser", "Selected file path: " + filePath);
+                        game.loadGameMap(filePath);
+                    }
+
+                    @Override
+                    public void onCancellation() {
+                        Gdx.app.log("File Chooser", "File selection cancelled.");
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        Gdx.app.error("File Chooser", "Error occurred while selecting file: " + exception.getMessage());
+                    }
+                });
+            }
+        });
+
+        // Game controls: instructions how to move and attack!
+
+        table.add(new Label("Controls", game.getSkin(), "title")).padTop(10).padBottom(10).row();
+
+        Label c1 = new Label("Move: Arrow Keys", game.getSkin());
+        Label c2 = new Label("Attack: A", game.getSkin());
+        Label c3 = new Label("Pause / Menu: ESC", game.getSkin());
+
+        c1.setAlignment(Align.center);
+        c2.setAlignment(Align.center);
+        c3.setAlignment(Align.center);
+
+        table.add(c1).padBottom(6).row();
+        table.add(c2).padBottom(6).row();
+        table.add(c3).padBottom(0).row();
+
+
+        /*Table table = new Table(); // Create a table for layout
         table.setFillParent(true); // Make the table fill the stage
         stage.addActor(table); // Add the table to the stage
 
@@ -124,7 +216,7 @@ public class MenuScreen implements Screen {
         table.add(new Label("Attack: Press A", game.getSkin())).padBottom(25).row();
 
         // Pause the Game
-        table.add(new Label("Pause / Return to Menu: ESC", game.getSkin())).padBottom(25).row();
+        table.add(new Label("Pause / Return to Menu: ESC", game.getSkin())).padBottom(25).row();*/
 
 
     }

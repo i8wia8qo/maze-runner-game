@@ -29,6 +29,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.ase.maze.entities.*;
 import de.tum.cit.ase.maze.helpers.Tuple;
 import de.tum.cit.ase.maze.scenes.Hud;
+import com.badlogic.gdx.InputMultiplexer;
 
 import java.util.*;
 
@@ -40,9 +41,7 @@ public class GameScreen implements Screen {
 
     // First we create the map
     private TiledMap map;
-    private OrthogonalTiledMapRenderer renderer;
     private OrthogonalTiledMapRenderer tiledMapRenderer;
-
     private ShapeRenderer shapeRenderer;
 
     //private GameMap gameMap;  // GameMap class to handle map-related logic
@@ -91,7 +90,17 @@ public class GameScreen implements Screen {
     private boolean switchedToExcitingMusic = true;
 
     private float timeSinceEscapePressed = 0f;
-    //private boolean escapeKeyPressed = false;
+
+    private boolean disposed = false;
+
+    private boolean switchingScreen = false;   // prevents use-after-switch
+    private boolean initialized = false;       // render guard until show() ran
+
+    // textures owned by THIS screen (created in show())
+    private Texture characterSheet;            // replaces local walkSheet
+    private Texture objectsSheet;              // used for poof (no more per-kill Texture())
+    private TextureRegion poofFrame;           // cached region from objectsSheet
+
 
     /**
      * Constructs a new GameScreen, setting up the game environment, initializing the map,
@@ -101,7 +110,7 @@ public class GameScreen implements Screen {
      * @param game The instance of the game controller, providing access to global game resources and methods.
      * @param filePath The file path to the level map to be loaded, allowing for dynamic level loading.
      */
-    public GameScreen(MazeRunnerGame game, String filePath) {
+    /* public GameScreen(MazeRunnerGame game, String filePath) {
 
 
 
@@ -158,6 +167,58 @@ public class GameScreen implements Screen {
         // Get the font from the game's skin
         font = game.getSkin().getFont("font");
 
+    } */
+
+    public GameScreen(MazeRunnerGame game, String filePath) {
+        this.game = game;
+
+        // Reset state flags for this screen instance
+        disposed = false;
+        switchingScreen = false;
+        initialized = false;
+        goToGameOver = false;
+        goToNextLevel = false;
+        escapeKeyPressed = false;
+        switchToExcitingMusic = false;
+        switchedToExcitingMusic = true;
+
+        hud = new Hud(game.getSpriteBatch(), game);
+
+        cameraFollowThresholdX = game.V_WIDTH * 0.1f;
+        cameraFollowThresholdY = game.V_HEIGHT * 0.1f;
+        cameraSpeed = 2.0f;
+        targetPosition = new Vector3();
+
+        game.changeMusic("hauntedMusic.mp3");
+
+        ghostPoofAnimation = game.getGhostPoof();
+
+        this.gameMap = new GameMap2(filePath);
+        this.map = gameMap.getTiledMap();
+
+        // Only ONE renderer for the tiled map
+        tiledMapRenderer = new OrthogonalTiledMapRenderer(map);
+
+        shapeRenderer = new ShapeRenderer();
+
+        // UI stage
+        OrthographicCamera uiCamera = new OrthographicCamera();
+        Viewport uiViewport = new ScreenViewport(uiCamera);
+        this.uiStage = new Stage(uiViewport);
+
+        // Game camera + viewport
+        camera = new OrthographicCamera();
+        gameViewport = new FitViewport(game.V_WIDTH, game.V_HEIGHT, camera);
+        gameViewport.apply(true);
+
+        camera.position.set(gameMap.getMapWidth() * 16 / 2f, gameMap.getMapHeight() * 16 / 2f, 0);
+        camera.zoom = 0.7f;
+        camera.update();
+
+        uiCamera.zoom = 1f;
+        uiCamera.update();
+
+        font = game.getSkin().getFont("font");
     }
 
 
@@ -172,6 +233,17 @@ public class GameScreen implements Screen {
      */
     @Override
     public void render(float delta) {
+
+        if (disposed || switchingScreen) return;
+        if (!initialized || player == null) return;
+
+        if (game.isPaused()) {
+            return;
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            escapeKeyPressed = true;
+        }
 
         // If the game is paused, update the timer
         /*if (game.isPaused()) {
@@ -330,12 +402,12 @@ public class GameScreen implements Screen {
             player.update(delta);
             player.draw(game.getSpriteBatch());
 
-            firstLife.update(delta);
+            /*firstLife.update(delta);
             secondLife.update(delta);
             thirdLife.update(delta);
             firstLife.draw(game.getSpriteBatch());
             secondLife.draw(game.getSpriteBatch());
-            thirdLife.draw(game.getSpriteBatch());
+            thirdLife.draw(game.getSpriteBatch());*/
 
 
             game.getSpriteBatch().end(); // Important to call this after drawing everything*/
@@ -345,10 +417,9 @@ public class GameScreen implements Screen {
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
 
             // Calculate the starting point to draw the static rectangle
-            int rectX = 112 - 16; // Center X - half the width of the rectangle
+            /*int rectX = 112 - 16; // Center X - half the width of the rectangle
             int rectY = 112 - 16; // Center Y - half the height of the rectangle
-
-            shapeRenderer.rect(rectX, rectY, 32, 32); // Draw a 32x32 rectangle
+            shapeRenderer.rect(rectX, rectY, 32, 32); // Draw a 32x32 rectangle*/
 
             Rectangle playerBounds = player.getEntityBounds();
             Rectangle playerSword = player.getSwordHitZone();
@@ -440,9 +511,13 @@ public class GameScreen implements Screen {
                             if (ghost.isDead()) {
                                 hud.setScore(hud.getScore() + 100);
 
-                                Texture objectsSheet = new Texture(Gdx.files.internal("objects.png"));
+                                /*Texture objectsSheet = new Texture(Gdx.files.internal("objects.png"));
                                 TextureRegion poofTexture = new TextureRegion(objectsSheet, 32, 32, 32, 32);
                                 Poof poof = new Poof(new Sprite(poofTexture), gameMap, ghostPoofAnimation);
+                                poof.setX(enemy.getX() - enemy.getWidth() / 2);
+                                poof.setY(enemy.getY() - enemy.getHeight() / 2);
+                                ghostPoof.add(poof);*/
+                                Poof poof = new Poof(new Sprite(poofFrame), gameMap, ghostPoofAnimation);
                                 poof.setX(enemy.getX() - enemy.getWidth() / 2);
                                 poof.setY(enemy.getY() - enemy.getHeight() / 2);
                                 ghostPoof.add(poof);
@@ -606,7 +681,7 @@ public class GameScreen implements Screen {
 
             //renderer.getBatch().end();
 
-            if (goToGameOver) {
+            /*if (goToGameOver) {
                 Gdx.app.log("GameScreen", "Player has no lives left. Switching to GameOverScreen.");
                 game.goToGameOver();
 
@@ -621,15 +696,38 @@ public class GameScreen implements Screen {
                 game.goToGame();
 
                 return; // Ensure no further rendering logic is processed after this call
+            }*/
+
+
+            if (goToGameOver) {
+                switchingScreen = true;
+                Gdx.app.log("GameScreen", "Switching to GameOverScreen.");
+                game.goToGameOver();
+                return;
+            }
+
+            if (goToNextLevel) {
+                switchingScreen = true;
+                Gdx.app.log("GameScreen", "Switching to next level.");
+                game.setLevelCounter(game.getLevelCounter() + 1);
+                game.goToGame();
+                return;
+            }
+
+            if (escapeKeyPressed) {
+                switchingScreen = true;
+                escapeKeyPressed = false;
+                Gdx.app.log("GameScreen", "Switching to MenuScreen.");
+                game.goToMenu();
+                return;
             }
 
 
-
         }
 
-        if (escapeKeyPressed) {
+        /*if (escapeKeyPressed) {
             game.goToMenu();
-        }
+        }*/
         /*
 
 
@@ -668,19 +766,52 @@ public class GameScreen implements Screen {
      * @param width The new width of the window.
      * @param height The new height of the window.
      */
-    @Override
+    /*@Override
     public void resize(int width, int height) {
         // original code camera.setToOrtho(false);
         //camera.viewportWidth = width;
         //camera.viewportHeight = height;
-        gameViewport.update(width, height, true); // Update the viewport dimensions
+        //gameViewport.update(width, height, true); // Update the viewport dimensions
         //gameViewport.apply(true);
         //camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0); // Center the camera
         //uiStage.getViewport().update(width, height, true);
         //camera.update();
 
+        if (disposed) return;
 
+        // Update world viewport. Keeps aspect ratio, avoids squishing.
+        gameViewport.update(width, height, true);
 
+        // Update UI viewport. Keeps UI coordinates in screen pixels.
+        if (uiStage != null) {
+            uiStage.getViewport().update(width, height, true);
+        }
+
+        // Update HUD stage
+        if (hud != null && hud.stage != null) {
+            hud.stage.getViewport().update(width, height, true);
+        }
+
+    }*/
+
+    @Override
+    public void resize(int width, int height) {
+        if (disposed) return;
+
+        // WORLD viewport prevents squishing.
+        if (gameViewport != null) {
+            gameViewport.update(width, height, true);
+        }
+
+        // UI stage viewport. Fixes button hit areas after resize.
+        if (uiStage != null) {
+            uiStage.getViewport().update(width, height, true);
+        }
+
+        // HUD stage viewport
+        if (hud != null && hud.stage != null) {
+            hud.stage.getViewport().update(width, height, true);
+        }
     }
 
     @Override
@@ -695,7 +826,7 @@ public class GameScreen implements Screen {
      * Called when this screen becomes the current screen for the game. Used to initialize
      * resources specific to this screen.
      */
-    @Override
+    /*@Override
     public void show() {
 
         TmxMapLoader loader = new TmxMapLoader();
@@ -777,7 +908,7 @@ public class GameScreen implements Screen {
         TextureRegion stillFrameTrapSkewedGray = new TextureRegion(game.getTrapSkewedGrayAnimation().getKeyFrame(0));
         TextureRegion stillFrameTrapSkewedGold = new TextureRegion(game.getTrapSkewedGoldAnimation().getKeyFrame(0));
 
-        /*ghost1 = new Ghost(new Sprite(stillFrameDownGhost), gameMap,
+        *//*ghost1 = new Ghost(new Sprite(stillFrameDownGhost), gameMap,
                 game.getGhostUpAnimation(),
                 game.getGhostDownAnimation(),
                 game.getGhostLeftAnimation(),
@@ -793,7 +924,7 @@ public class GameScreen implements Screen {
                 stillFrameLeftGhost,
                 stillFrameRightGhost);
 
-        ghost1.setPosition(8 * ghost1.getCollisionLayer().getTileWidth(), 5 * ghost1.getCollisionLayer().getTileHeight());*/
+        ghost1.setPosition(8 * ghost1.getCollisionLayer().getTileWidth(), 5 * ghost1.getCollisionLayer().getTileHeight());*//*
 
         TextureRegion[] stillFrames = new TextureRegion[4]; // Assuming you have 4 still frames
 
@@ -870,11 +1001,147 @@ public class GameScreen implements Screen {
 
 
 
+    }*/
+
+
+    @Override
+    public void show() {
+        // If show() gets called again on the same screen instance, reset safe state
+        traps.clear();
+        enemies.clear();
+        keyChests.clear();
+        doors.clear();
+        ghostPoof.clear();
+
+        // --- Textures owned by this screen ---
+        // Character sheet used ONLY to build Player sprite/regions here
+        characterSheet = new Texture(Gdx.files.internal("character.png"));
+
+        // Objects sheet used for poof (avoid allocating textures inside render!)
+        objectsSheet = new Texture(Gdx.files.internal("objects.png"));
+        poofFrame = new TextureRegion(objectsSheet, 32, 32, 32, 32);
+
+        int frameWidth = 16;
+        int frameHeight = 32;
+
+        TextureRegion textureRegion = new TextureRegion(characterSheet, 0 * frameWidth, 0 * frameHeight, frameWidth, frameHeight);
+
+        TextureRegion texregFacingDown  = new TextureRegion(characterSheet, 0 * frameWidth, 0 * frameHeight, frameWidth, frameHeight);
+        TextureRegion texregFacingRight = new TextureRegion(characterSheet, 0 * frameWidth, 1 * frameHeight, frameWidth, frameHeight);
+        TextureRegion texregFacingUp    = new TextureRegion(characterSheet, 0 * frameWidth, 2 * frameHeight, frameWidth, frameHeight);
+        TextureRegion texregFacingLeft  = new TextureRegion(characterSheet, 0 * frameWidth, 3 * frameHeight, frameWidth, frameHeight);
+
+        player = new Player(
+                new Sprite(textureRegion),
+                gameMap,
+                game.getCharacterUpAnimation(),
+                game.getCharacterDownAnimation(),
+                game.getCharacterLeftAnimation(),
+                game.getCharacterRightAnimation(),
+                game.getCharacterFightUpAnimation(),
+                game.getCharacterFightDownAnimation(),
+                game.getCharacterFightLeftAnimation(),
+                game.getCharacterFightRightAnimation(),
+                texregFacingDown,
+                texregFacingRight,
+                texregFacingUp,
+                texregFacingLeft
+        );
+
+        player.setPosition(
+                gameMap.getSpawn().getX() * player.getCollisionLayer().getTileWidth(),
+                gameMap.getSpawn().getY() * player.getCollisionLayer().getTileHeight()
+        );
+
+        // Lives sprites use TextureRegions from MazeRunnerGame (shared); do NOT dispose those here
+        firstLife = new Lives(new Sprite(game.getHeartFull()), player);
+        secondLife = new Lives(new Sprite(game.getHeartFull()), player);
+        thirdLife = new Lives(new Sprite(game.getHeartFull()), player);
+
+        initLivesDisplay();
+
+        // Build enemies/traps/etc. (unchanged logic, but keep it here)
+        TextureRegion stillFrameUpGhost    = new TextureRegion(game.getGhostUpAnimation().getKeyFrame(0));
+        TextureRegion stillFrameDownGhost  = new TextureRegion(game.getGhostDownAnimation().getKeyFrame(0));
+        TextureRegion stillFrameLeftGhost  = new TextureRegion(game.getGhostLeftAnimation().getKeyFrame(0));
+        TextureRegion stillFrameRightGhost = new TextureRegion(game.getGhostRightAnimation().getKeyFrame(0));
+
+        TextureRegion[] stillFrames = new TextureRegion[4];
+        stillFrames[0] = new TextureRegion(game.getTrapStraightGrayAnimation().getKeyFrame(0));
+        stillFrames[1] = new TextureRegion(game.getTrapStraightGoldAnimation().getKeyFrame(0));
+        stillFrames[2] = new TextureRegion(game.getTrapSkewedGrayAnimation().getKeyFrame(0));
+        stillFrames[3] = new TextureRegion(game.getTrapSkewedGoldAnimation().getKeyFrame(0));
+
+        @SuppressWarnings("unchecked")
+        Animation<TextureRegion>[] animations = new Animation[4];
+        animations[0] = game.getTrapStraightGrayAnimation();
+        animations[1] = game.getTrapStraightGoldAnimation();
+        animations[2] = game.getTrapSkewedGrayAnimation();
+        animations[3] = game.getTrapSkewedGoldAnimation();
+
+        Random random = new Random();
+
+        for (Tuple spawn : gameMap.getTrapSpawns()) {
+            int randomInt = random.nextInt(4);
+            Trap trap = new Trap(new Sprite(stillFrames[randomInt]), gameMap, animations[randomInt]);
+            trap.setPosition(spawn.getX() * trap.getCollisionLayer().getTileWidth(),
+                    spawn.getY() * trap.getCollisionLayer().getTileHeight());
+            traps.add(trap);
+        }
+
+        for (Tuple spawn : gameMap.getEnemySpawns()) {
+            Ghost ghost = new Ghost(
+                    new Sprite(stillFrameDownGhost), gameMap,
+                    game.getGhostUpAnimation(), game.getGhostDownAnimation(),
+                    game.getGhostLeftAnimation(), game.getGhostRightAnimation(),
+                    game.getGhostUpAnimation(), game.getGhostDownAnimation(),
+                    game.getGhostLeftAnimation(), game.getGhostRightAnimation(),
+                    stillFrameUpGhost, stillFrameDownGhost, stillFrameLeftGhost, stillFrameRightGhost
+            );
+            ghost.setPosition(spawn.getX() * ghost.getCollisionLayer().getTileWidth(),
+                    spawn.getY() * ghost.getCollisionLayer().getTileHeight());
+            enemies.add(ghost);
+        }
+
+        for (Tuple spawn : gameMap.getKeyChestSpawns()) {
+            KeyChest keyChest = new KeyChest(new Sprite(game.getKeyChestOpen().getKeyFrame(0)), gameMap, game.getKeyChestOpen());
+            keyChest.setPosition(spawn.getX() * keyChest.getCollisionLayer().getTileWidth(),
+                    spawn.getY() * keyChest.getCollisionLayer().getTileHeight());
+            keyChests.add(keyChest);
+        }
+
+        for (Tuple spawn : gameMap.getDoorSpawns()) {
+            Door door = new Door(new Sprite(game.getDoorOpen().getKeyFrame(0)), gameMap, game.getDoorOpen());
+            door.setPosition(spawn.getX() * door.getCollisionLayer().getTileWidth(),
+                    spawn.getY() * door.getCollisionLayer().getTileHeight());
+            doors.add(door);
+        }
+
+        initialized = true;
+
+
+        // While resizing the window, hitboxes of buttons should stay aligned with the buttons.
+        // The following code does this.
+        InputMultiplexer mux = new InputMultiplexer();
+
+        // UI stage should usually get input first
+        if (uiStage != null) mux.addProcessor(uiStage);
+
+        // HUD stage too if it has clickable actors
+        if (hud != null && hud.stage != null) mux.addProcessor(hud.stage);
+
+        Gdx.input.setInputProcessor(mux);
+
     }
 
     @Override
-    public void hide() {
+    /* public void hide() {
         dispose();
+    } */
+
+    public void hide() {
+        // stop timers, unregister input, pause, etc.
+        // DO NOT dispose here.
     }
 
 
@@ -1012,7 +1279,8 @@ public class GameScreen implements Screen {
      * Called when this screen becomes the current screen for the game. Used to initialize
      * resources specific to this screen.
      */
-    @Override
+
+    /*@Override
     public void dispose() {
         // Dispose of the map resource if it's exclusively used within this screen.
         safelyDispose("map", map);
@@ -1032,6 +1300,63 @@ public class GameScreen implements Screen {
         safelyDispose("uiStage", uiStage);
 
         // It's critical to ensure that shared resources (like global SpriteBatch instances) are not disposed of here.
+    }*/
+
+    /*@Override
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+
+        safelyDispose("uiStage", uiStage);
+        uiStage = null;
+
+        safelyDispose("shapeRenderer", shapeRenderer);
+        shapeRenderer = null;
+
+        safelyDispose("tiledMapRenderer", tiledMapRenderer);
+        tiledMapRenderer = null;
+
+        safelyDispose("renderer", tiledMapRenderer);
+        tiledMapRenderer = null;
+
+        // Map ownership: ONLY dispose it if GameMap2 doesn't also dispose it
+        safelyDispose("map", map);
+        map = null;
+
+        // IMPORTANT: do NOT dispose player.getTexture() here (explained below)
+    }*/
+
+
+
+    @Override
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        switchingScreen = true;
+
+        safelyDispose("uiStage", uiStage);
+        uiStage = null;
+
+        safelyDispose("shapeRenderer", shapeRenderer);
+        shapeRenderer = null;
+
+        safelyDispose("tiledMapRenderer", tiledMapRenderer);
+        tiledMapRenderer = null;
+
+        // Map ownership: ONLY dispose if GameMap2 does NOT dispose it elsewhere.
+        safelyDispose("map", map);
+        map = null;
+
+        // Dispose textures that THIS screen created in show()
+        safelyDisposeTexture("characterSheet", characterSheet);
+        characterSheet = null;
+
+        safelyDisposeTexture("objectsSheet", objectsSheet);
+        objectsSheet = null;
+
+        poofFrame = null;
+
+
     }
 
     // Helper method to safely dispose of disposable resources.
@@ -1061,6 +1386,8 @@ public class GameScreen implements Screen {
     // Additional methods and logic can be added as needed for the game screen
     private void initLivesDisplay() {
 
+        /*
+
         firstLifeImage = new Image(new SpriteDrawable(firstLife));
         secondLifeImage = new Image(new SpriteDrawable(secondLife));
         thirdLifeImage = new Image(new SpriteDrawable(thirdLife));
@@ -1082,6 +1409,9 @@ public class GameScreen implements Screen {
         uiStage.addActor(firstLifeImage);
         uiStage.addActor(secondLifeImage);
         uiStage.addActor(thirdLifeImage);
+
+        */
+
     }
 
     public void updateLives() {

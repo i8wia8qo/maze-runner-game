@@ -516,9 +516,14 @@ public class MazeRunnerGame extends Game {
      * @param width The new width of the screen.
      * @param height The new height of the screen.
      */
-    public void resize(int width, int height) {
+    /*public void resize(int width, int height) {
         // Update the viewport when the screen size changes
         //Viewport.update(width, height, true);
+    }*/
+
+    @Override
+    public void resize(int width, int height) {
+        super.resize(width, height); // forwards to current screen.resize()
     }
 
     /**
