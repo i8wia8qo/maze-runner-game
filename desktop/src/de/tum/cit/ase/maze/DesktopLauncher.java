@@ -30,6 +30,15 @@ public class DesktopLauncher {
 		config.useVsync(true); // Enable vertical sync
 		config.setForegroundFPS(60); // Set the foreground frames per second
 
+		config.setWindowIcon(
+				"icons/MazeRunnerIcon_16x16.png",
+				"icons/MazeRunnerIcon_32x32.png",
+				"icons/MazeRunnerIcon_64x64.png",
+				"icons/MazeRunnerIcon_128x128.png",
+				"icons/MazeRunnerIcon_256x256.png"
+		);
+
+
 		// Launch the game
 		new Lwjgl3Application(new MazeRunnerGame(new DesktopFileChooser()), config);
 	}

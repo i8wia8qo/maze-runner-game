@@ -1,14 +1,32 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+import org.gradle.internal.os.OperatingSystem
+
 sourceCompatibility = 17
+
 sourceSets.main.java.srcDirs = [ "src/" ]
 sourceSets.main.resources.srcDirs = ["../assets"]
 
 project.ext.mainClassName = "de.tum.cit.ase.maze.DesktopLauncher"
 project.ext.assetsDir = new File("../assets")
 
-import org.gradle.internal.os.OperatingSystem
+application {
+    mainClass = project.mainClassName
+}
 
-tasks.register('run', JavaExec) {
-    dependsOn classes
+shadowJar {
+    archiveBaseName.set("desktop")
+    archiveVersion.set("1.0")
+    archiveClassifier.set("")   // -> desktop-1.0.jar
+    mergeServiceFiles()
+}
+
+// configure the existing run task created by the application plugin
+tasks.named('run', JavaExec) {
     mainClass = project.mainClassName
     classpath = sourceSets.main.runtimeClasspath
     standardInput = System.in
@@ -16,7 +34,6 @@ tasks.register('run', JavaExec) {
     ignoreExitValue = true
 
     if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
-        // Required to run on macOS
         jvmArgs += "-XstartOnFirstThread"
     }
 }
@@ -31,19 +48,17 @@ tasks.register('debug', JavaExec) {
     debug = true
 }
 
+// (optional) legacy fat-jar task — Shadow is the one you want for packaging
 tasks.register('dist', Jar) {
     duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
-    manifest {
-        attributes 'Main-Class': project.mainClassName
-    }
+    manifest { attributes 'Main-Class': project.mainClassName }
     dependsOn configurations.runtimeClasspath
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
 
-
-dist.dependsOn classes
+tasks.named('build') {
+    dependsOn tasks.named('shadowJar')
+}
 
 eclipse.project.name = appName + "-desktop"
