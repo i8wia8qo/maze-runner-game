@@ -15,6 +15,11 @@ Play through **5 campaign levels**: find the chest containing the key, fight ene
 - 2D pixel-art aesthetic
 - Windows desktop build available via **Releases**
 
+## Controls
+- Movement: Arrow keys
+- Attack: A
+- Pause/Menu: ESC
+
 ## Installation
 
 ### Windows
@@ -53,10 +58,7 @@ Requirements: Java 17 or newer (Java 21 recommended). Check your Java installati
 java -version
 ```
 
-## Controls
-- Movement: Arrow keys  
-- Attack: A  
-- Pause/Menu: ESC
+
 
 ## Tech Stack
 
