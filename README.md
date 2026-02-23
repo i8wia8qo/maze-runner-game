@@ -50,7 +50,7 @@ chmod +x run.sh
 ```
 6. Start the game (**Do not move MazeRunner.jar out of its folder, the game requires the included assets/ directory.**):
 ```bash
-./run.sh
+java -jar MazeRunner.jar
 ```
 
 Requirements: Java 17 or newer (Java 21 recommended). Check your Java installation.
