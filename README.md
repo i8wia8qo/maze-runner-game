@@ -17,7 +17,7 @@ Play through **5 campaign levels**: find the chest containing the key, fight ene
 
 ## Installation (Windows)
 
-There is no installer required. Download and immediately start to play by following these steps:
+There is no installer required. Download and start playing immediately by following these steps:
 
 1. Go to the **Releases** section of this repository.
 2. Download the latest `.zip` file.
