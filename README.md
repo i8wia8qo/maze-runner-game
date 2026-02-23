@@ -30,7 +30,6 @@ Requirements: Windows 10 or newer. No additional installation required (Java run
 
 > If Windows shows a security warning, click **More Info → Run Anyway**.
 
----
 
 ### Linux
 
