@@ -65,5 +65,5 @@ This project is for educational and demonstration purposes and licensed under th
 
 Felix Reibold (M.Sc.)
 
-- GitHub: https://github.com/felixreibold/
-- LinkedIn: https://www.linkedin.com/in/felixreibold/
+- GitHub: https://github.com/felixreibold
+- LinkedIn: https://www.linkedin.com/in/felixreibold
